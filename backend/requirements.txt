@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pymysql
+bcrypt==4.0.1
+ollama
+pydantic
+python-multipart
