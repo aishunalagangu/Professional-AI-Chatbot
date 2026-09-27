@@ -10,12 +10,17 @@
 .auth-card {
   width: 100%;
   max-width: 430px;
-  background: white;
+  box-sizing: border-box;
+  background: #fff;
   border: 1px solid #e5e5e5;
   border-radius: 14px;
   padding: 35px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
 }
+
+/* =========================
+   HEADER
+========================= */
 
 .auth-logo {
   text-align: center;
@@ -46,6 +51,10 @@
   font-size: 14px;
 }
 
+/* =========================
+   TABS
+========================= */
+
 .auth-tabs {
   display: flex;
   border-bottom: 1px solid #ddd;
@@ -68,7 +77,12 @@
   font-weight: 600;
 }
 
+/* =========================
+   FORM FIELDS
+========================= */
+
 .input-group {
+  width: 100%;
   margin-bottom: 18px;
 }
 
@@ -80,49 +94,147 @@
   color: #333;
 }
 
-.input-wrapper {
-  height: 28px;
-  border: 1px solid #d9d9d9;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  padding: 0 13px;
-  gap: 10px;
-  transition: 0.2s;
+/*
+   AUTH INPUT WRAPPER
+
+   IMPORTANT:
+   Do NOT call this .input-wrapper.
+   App.css already uses .input-wrapper
+   for the chatbot message box.
+*/
+
+.auth-input-wrapper {
+  position: relative;
+  width: 100%;
+  height: 50px;
 }
 
-.input-wrapper svg {
+/* Actual input box */
+
+.auth-input-wrapper input {
+  display: block;
+  width: 100%;
+  height: 50px;
+
+  box-sizing: border-box;
+
+  margin: 0;
+  padding: 0 48px;
+
+  border: 1px solid #d9d9d9;
+  border-radius: 9px;
+
+  outline: none;
+
+  background: #ffffff;
+
+  font-family: inherit;
+  font-size: 15px;
+  color: #222;
+
+  box-shadow: none;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+/* Placeholder */
+
+.auth-input-wrapper input::placeholder {
   color: #777;
 }
 
-.input-wrapper:focus-within {
+/* Focus */
+
+.auth-input-wrapper input:focus {
   border-color: #10a37f;
-  box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.12);
+
+  box-shadow:
+    0 0 0 3px rgba(16, 163, 127, 0.1);
 }
 
-.input-wrapper input {
-  width: 100%;
-  border: none;
-  outline: none;
-  font-size: 15px;
-  color: #222;
+/* =========================
+   LEFT ICON
+========================= */
+
+.auth-input-wrapper .input-icon {
+  position: absolute;
+
+  left: 15px;
+  top: 25px;
+
+  transform: translateY(-50%);
+
+  color: #777;
+
+  pointer-events: none;
+
+  z-index: 2;
 }
+
+/* =========================
+   PASSWORD EYE BUTTON
+========================= */
+
+.auth-input-wrapper .password-toggle {
+  position: absolute;
+
+  right: 10px;
+  top: 25px;
+
+  transform: translateY(-50%);
+
+  width: 30px;
+  height: 30px;
+
+  padding: 0;
+  margin: 0;
+
+  border: none;
+  background: transparent;
+
+  color: #777;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+
+  z-index: 2;
+}
+
+.auth-input-wrapper .password-toggle:hover {
+  color: #10a37f;
+}
+
+/* =========================
+   SUBMIT BUTTON
+========================= */
 
 .auth-submit {
   width: 100%;
   height: 48px;
+
+  margin-top: 8px;
+
   border: none;
   border-radius: 8px;
+
   background: #10a37f;
   color: white;
+
   font-size: 15px;
   font-weight: 600;
-  cursor: pointer;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   gap: 8px;
-  margin-top: 8px;
+
+  cursor: pointer;
 }
 
 .auth-submit:hover {
@@ -134,102 +246,71 @@
   cursor: not-allowed;
 }
 
+/* =========================
+   MESSAGES
+========================= */
+
 .auth-error {
   background: #fff1f0;
   color: #d93025;
+
   border: 1px solid #ffd6d2;
+
   padding: 10px;
+
   border-radius: 7px;
+
   font-size: 13px;
+
   margin-bottom: 15px;
 }
 
 .auth-success {
   background: #effaf6;
   color: #087f5b;
+
   border: 1px solid #b7ead9;
+
   padding: 10px;
+
   border-radius: 7px;
+
   font-size: 13px;
+
   margin-bottom: 15px;
 }
 
+/* =========================
+   FOOTER
+========================= */
+
 .auth-footer {
   text-align: center;
+
   margin-top: 22px;
+
   color: #666;
+
   font-size: 14px;
 }
 
 .auth-footer button {
   border: none;
   background: transparent;
+
   color: #10a37f;
+
   font-weight: 600;
+
   cursor: pointer;
 }
+
+/* =========================
+   MOBILE
+========================= */
 
 @media (max-width: 500px) {
   .auth-card {
     padding: 25px 20px;
   }
-}
-
-.password-wrapper {
-  position: relative;
-  width: 100%;
-}
-
-.password-input {
-  width: 100%;
-  height: 50px;
-  box-sizing: border-box;
-
-  border: 2px solid #d9d9d9;
-  border-radius: 18px;
-
-  padding: 0 50px 0 16px;
-
-  font-size: 16px;
-  font-family: inherit;
-  outline: none;
-  background: #fff;
-}
-
-.password-input:focus {
-  border-color: #10a37f;
-}
-
-.password-input::placeholder {
-  color: #777;
-}
-
-.password-toggle {
-  position: absolute;
-
-  right: 14px;
-  top: 50%;
-
-  transform: translateY(-50%);
-
-  width: 32px;
-  height: 32px;
-
-  padding: 0;
-  margin: 0;
-
-  border: none;
-  background: transparent;
-
-  color: #666;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  cursor: pointer;
-}
-
-.password-toggle:hover {
-  color: #10a37f;
 }

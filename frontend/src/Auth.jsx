@@ -49,9 +49,7 @@ function Auth({ onLogin }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.detail || "Something went wrong"
-        );
+        throw new Error(data.detail || "Something went wrong");
       }
 
       if (isLogin) {
@@ -62,9 +60,7 @@ function Auth({ onLogin }) {
 
         onLogin(data.user);
       } else {
-        setSuccess(
-          "Registration successful. Please login."
-        );
+        setSuccess("Registration successful. Please login.");
 
         setIsLogin(true);
         setName("");
@@ -79,9 +75,9 @@ function Auth({ onLogin }) {
 
   return (
     <div className="auth-page">
-
       <div className="auth-card">
 
+        {/* LOGO / HEADER */}
         <div className="auth-logo">
           <div className="auth-logo-icon">
             <Bot size={30} />
@@ -94,9 +90,11 @@ function Auth({ onLogin }) {
           </p>
         </div>
 
+        {/* LOGIN / REGISTER TABS */}
         <div className="auth-tabs">
 
           <button
+            type="button"
             className={isLogin ? "active" : ""}
             onClick={() => {
               setIsLogin(true);
@@ -108,6 +106,7 @@ function Auth({ onLogin }) {
           </button>
 
           <button
+            type="button"
             className={!isLogin ? "active" : ""}
             onClick={() => {
               setIsLogin(false);
@@ -120,15 +119,21 @@ function Auth({ onLogin }) {
 
         </div>
 
+        {/* FORM */}
         <form onSubmit={handleSubmit}>
 
+          {/* FULL NAME */}
           {!isLogin && (
             <div className="input-group">
 
               <label>Full Name</label>
 
-              <div className="input-wrapper">
-                <User size={18} />
+              <div className="auth-input-wrapper">
+
+                <User
+                  size={20}
+                  className="input-icon"
+                />
 
                 <input
                   type="text"
@@ -139,17 +144,23 @@ function Auth({ onLogin }) {
                   }
                   required
                 />
+
               </div>
 
             </div>
           )}
 
+          {/* EMAIL */}
           <div className="input-group">
 
             <label>Email</label>
 
-            <div className="input-wrapper">
-              <Mail size={18} />
+            <div className="auth-input-wrapper">
+
+              <Mail
+                size={20}
+                className="input-icon"
+              />
 
               <input
                 type="email"
@@ -160,46 +171,71 @@ function Auth({ onLogin }) {
                 }
                 required
               />
+
             </div>
 
           </div>
 
+          {/* PASSWORD */}
           <div className="input-group">
 
             <label>Password</label>
 
-              <div className="password-wrapper">
-                      <input
-                        className="password-input"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Enter your Password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                      />
+            <div className="auth-input-wrapper">
 
-                      <button
-                        type="button"
-                        className="password-toggle"
-                        onClick={() => setShowPassword(!showPassword)}
-                        aria-label={showPassword ? "Hide password" : "Show password"}
-                      >
-                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                      </button>
-                    </div>
-                </div>
+              <Lock
+                size={20}
+                className="input-icon"
+              />
 
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) =>
+                  setPassword(e.target.value)
+                }
+                required
+              />
+
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() =>
+                  setShowPassword(!showPassword)
+                }
+                aria-label={
+                  showPassword
+                    ? "Hide password"
+                    : "Show password"
+                }
+              >
+                {showPassword ? (
+                  <EyeOff size={20} />
+                ) : (
+                  <Eye size={20} />
+                )}
+              </button>
+
+            </div>
+
+          </div>
+
+          {/* ERROR MESSAGE */}
           {error && (
             <div className="auth-error">
               {error}
             </div>
           )}
 
+          {/* SUCCESS MESSAGE */}
           {success && (
             <div className="auth-success">
               {success}
             </div>
           )}
 
+          {/* SUBMIT BUTTON */}
           <button
             type="submit"
             className="auth-submit"
@@ -222,12 +258,15 @@ function Auth({ onLogin }) {
 
         </form>
 
+        {/* FOOTER */}
         <p className="auth-footer">
+
           {isLogin
             ? "Don't have an account?"
             : "Already have an account?"}
 
           <button
+            type="button"
             onClick={() => {
               setIsLogin(!isLogin);
               setError("");
@@ -236,10 +275,10 @@ function Auth({ onLogin }) {
           >
             {isLogin ? " Register" : " Login"}
           </button>
+
         </p>
 
       </div>
-
     </div>
   );
 }

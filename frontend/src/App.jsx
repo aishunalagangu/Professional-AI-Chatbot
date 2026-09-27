@@ -47,9 +47,17 @@ function App() {
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+
+  // General request state
   const [loading, setLoading] = useState(false);
 
+  // Conversation history loading
   const [loadingConversationId, setLoadingConversationId] =
+    useState(null);
+
+  // AI typing state
+  // This contains ONLY the conversation currently generating AI response
+  const [typingConversationId, setTypingConversationId] =
     useState(null);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -63,6 +71,13 @@ function App() {
   const [editingTitle, setEditingTitle] = useState("");
 
   const messagesEndRef = useRef(null);
+
+  // Used to identify the latest message request
+  const typingRequestRef = useRef(0);
+
+  // Used to prevent old conversation-loading requests
+  // from overwriting the currently selected conversation
+  const historyRequestRef = useRef(0);
 
   // -----------------------------
   // FORMAT TIME - IST
@@ -147,9 +162,13 @@ function App() {
     setSearchTerm("");
     setLoading(false);
     setLoadingConversationId(null);
+    setTypingConversationId(null);
     setCopiedIndex(null);
     setEditingId(null);
     setEditingTitle("");
+
+    typingRequestRef.current += 1;
+    historyRequestRef.current += 1;
   };
 
   // -----------------------------
@@ -167,9 +186,13 @@ function App() {
     setEditingId(null);
     setEditingTitle("");
     setLoadingConversationId(null);
+    setTypingConversationId(null);
     setCopiedIndex(null);
     setLoading(false);
     setInput("");
+
+    typingRequestRef.current += 1;
+    historyRequestRef.current += 1;
   };
 
   // -----------------------------
@@ -233,11 +256,12 @@ function App() {
       return;
     }
 
+    const requestId = ++historyRequestRef.current;
+
     try {
       setLoadingConversationId(conversationId);
       setCopiedIndex(null);
 
-      // Clear only while loading the selected conversation
       setMessages([]);
 
       const response = await fetch(
@@ -263,6 +287,11 @@ function App() {
         data
       );
 
+      // Ignore old request if user changed conversation
+      if (requestId !== historyRequestRef.current) {
+        return;
+      }
+
       if (!Array.isArray(data)) {
         console.error(
           "Unexpected messages response:",
@@ -278,6 +307,11 @@ function App() {
 
       setMessages(formattedMessages);
     } catch (error) {
+      // Ignore old request errors
+      if (requestId !== historyRequestRef.current) {
+        return;
+      }
+
       console.error(
         "Error loading messages:",
         error
@@ -285,7 +319,10 @@ function App() {
 
       setMessages([]);
     } finally {
-      setLoadingConversationId(null);
+      // Only clear loading if this is still the latest request
+      if (requestId === historyRequestRef.current) {
+        setLoadingConversationId(null);
+      }
     }
   };
 
@@ -300,20 +337,31 @@ function App() {
       return;
     }
 
+    console.log(
+      "Switching to conversation:",
+      conversationId
+    );
+
+    // IMPORTANT:
+    // Immediately stop showing AI typing indicator
+    // when changing conversation.
+    setTypingConversationId(null);
+
+    // Invalidate any previous AI request UI
+    typingRequestRef.current += 1;
+
     setCopiedIndex(null);
     setEditingId(null);
     setEditingTitle("");
 
-    // If the user clicks the same active conversation,
-    // React will not trigger the activeConversationId effect.
-    // Therefore manually reload it.
-    if (activeConversationId === conversationId) {
-      await loadMessages(conversationId);
-      return;
-    }
+    // Clear old messages immediately
+    setMessages([]);
 
-    // Different conversation
+    // Select new conversation
     setActiveConversationId(conversationId);
+
+    // Load its messages
+    await loadMessages(conversationId);
   };
 
   // -----------------------------
@@ -334,8 +382,6 @@ function App() {
       const data = await loadConversations();
 
       if (data.length > 0) {
-        // If there is no active conversation,
-        // open the first saved conversation.
         if (activeConversationId === null) {
           setActiveConversationId(data[0].id);
         }
@@ -347,7 +393,6 @@ function App() {
 
     initializeChat();
 
-    // We intentionally run this when the logged-in user changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -373,7 +418,7 @@ function App() {
     messagesEndRef.current?.scrollIntoView({
       behavior: "smooth",
     });
-  }, [messages, loading]);
+  }, [messages, loading, typingConversationId]);
 
   // -----------------------------
   // CREATE CONVERSATION
@@ -432,6 +477,10 @@ function App() {
       setEditingId(null);
       setEditingTitle("");
 
+      // New conversation should never inherit
+      // another conversation's typing indicator.
+      setTypingConversationId(null);
+
       return newConversation.id;
     } catch (error) {
       console.error(
@@ -458,10 +507,13 @@ function App() {
     setLoading(true);
     setCopiedIndex(null);
 
+    // Generate unique request ID
+    const requestId = ++typingRequestRef.current;
+
     try {
       let conversationId = activeConversationId;
 
-      // Create a conversation if none exists
+      // If no conversation exists, create one
       if (!conversationId) {
         conversationId = await createConversation();
 
@@ -472,10 +524,19 @@ function App() {
         }
       }
 
+      console.log(
+        "Sending message to conversation:",
+        conversationId
+      );
+
+      // IMPORTANT:
+      // Typing indicator belongs ONLY to this conversation.
+      setTypingConversationId(conversationId);
+
       const currentTime =
         new Date().toISOString();
 
-      // Show user message immediately
+      // Add user's message
       setMessages((previous) => [
         ...previous,
         {
@@ -486,7 +547,6 @@ function App() {
         },
       ]);
 
-      // Send message to backend
       const response = await fetch(
         `${API_URL}/chat`,
         {
@@ -527,53 +587,76 @@ function App() {
         data
       );
 
-      // Show AI response
-      setMessages((previous) => [
-        ...previous,
-        {
-          id:
-            data.id ||
-            `assistant-${Date.now()}`,
-          role: "assistant",
-          content:
-            data.bot_response ||
-            "Sorry, I couldn't generate a response.",
-          created_at:
-            data.created_at ||
-            currentTime,
-        },
-      ]);
+      /*
+       * IMPORTANT:
+       * Only update the visible messages if
+       * the user is still viewing the same conversation.
+       */
+      if (
+        activeConversationId ===
+        conversationId
+      ) {
+        setMessages((previous) => [
+          ...previous,
+          {
+            id:
+              data.id ||
+              `assistant-${Date.now()}`,
+            role: "assistant",
+            content:
+              data.bot_response ||
+              "Sorry, I couldn't generate a response.",
+            created_at:
+              data.created_at ||
+              currentTime,
+          },
+        ]);
+      }
 
-      // Refresh sidebar so title/latest conversation
-      // information stays updated
       await loadConversations();
 
-      // Reload database history
-      // This ensures frontend matches MySQL data.
-      const historyResponse =
-        await fetch(
-          `${API_URL}/conversations/${conversationId}/messages?user_id=${user.id}`
-        );
+      // Refresh history only if user is still
+      // viewing this conversation.
+      if (
+        activeConversationId ===
+        conversationId
+      ) {
+        const historyResponse =
+          await fetch(
+            `${API_URL}/conversations/${conversationId}/messages?user_id=${user.id}`
+          );
 
-      if (historyResponse.ok) {
-        const historyData =
-          await historyResponse.json();
+        if (historyResponse.ok) {
+          const historyData =
+            await historyResponse.json();
 
-        if (Array.isArray(historyData)) {
-          const formattedMessages =
-            formatHistoryMessages(
-              historyData
+          /*
+           * Only update if:
+           * 1. Same conversation
+           * 2. Same request
+           */
+          if (
+            Array.isArray(historyData) &&
+            activeConversationId ===
+              conversationId &&
+            requestId ===
+              typingRequestRef.current
+          ) {
+            const formattedMessages =
+              formatHistoryMessages(
+                historyData
+              );
+
+            setMessages(
+              formattedMessages
             );
-
-          setMessages(
-            formattedMessages
+          }
+        } else {
+          console.error(
+            "Failed to refresh chat history:",
+            historyResponse.status
           );
         }
-      } else {
-        console.error(
-          "Failed to refresh chat history:",
-          historyResponse.status
-        );
       }
     } catch (error) {
       console.error(
@@ -581,20 +664,40 @@ function App() {
         error
       );
 
-      setMessages((previous) => [
-        ...previous,
-        {
-          id: `error-${Date.now()}`,
-          role: "assistant",
-          content:
-            error.message ||
-            "Sorry, something went wrong. Please try again.",
-          created_at:
-            new Date().toISOString(),
-        },
-      ]);
+      /*
+       * Only display error in the conversation
+       * where the request was started.
+       */
+      if (
+        activeConversationId !== null &&
+        activeConversationId ===
+          activeConversationId
+      ) {
+        setMessages((previous) => [
+          ...previous,
+          {
+            id: `error-${Date.now()}`,
+            role: "assistant",
+            content:
+              error.message ||
+              "Sorry, something went wrong. Please try again.",
+            created_at:
+              new Date().toISOString(),
+          },
+        ]);
+      }
     } finally {
-      setLoading(false);
+      /*
+       * Only clear typing indicator for the
+       * request that is still current.
+       */
+      if (
+        requestId ===
+        typingRequestRef.current
+      ) {
+        setTypingConversationId(null);
+        setLoading(false);
+      }
     }
   };
 
@@ -665,13 +768,19 @@ function App() {
         remainingConversations
       );
 
-      // If the deleted conversation was active
+      // If deleted conversation was active
       if (
         activeConversationId ===
         conversationId
       ) {
         setMessages([]);
         setCopiedIndex(null);
+
+        // Stop typing immediately
+        setTypingConversationId(null);
+
+        // Invalidate old request
+        typingRequestRef.current += 1;
 
         if (
           remainingConversations.length >
@@ -683,6 +792,19 @@ function App() {
         } else {
           setActiveConversationId(null);
         }
+
+        setLoading(false);
+      }
+
+      // If deleted conversation was typing
+      if (
+        typingConversationId ===
+        conversationId
+      ) {
+        setTypingConversationId(null);
+        setLoading(false);
+
+        typingRequestRef.current += 1;
       }
     } catch (error) {
       console.error(
@@ -802,7 +924,6 @@ function App() {
     index
   ) => {
     try {
-      // Modern clipboard API
       if (
         navigator.clipboard &&
         window.isSecureContext
@@ -820,7 +941,6 @@ function App() {
         return;
       }
 
-      // Fallback for localhost/older browsers
       const textArea =
         document.createElement(
           "textarea"
@@ -941,6 +1061,7 @@ function App() {
 
         {sidebarOpen && (
           <>
+
             {/* NEW CHAT */}
 
             <button
@@ -1086,6 +1207,7 @@ function App() {
                       ) : (
 
                         <>
+
                           {/* CONVERSATION SELECT */}
 
                           <button
@@ -1141,6 +1263,7 @@ function App() {
                             </button>
 
                           </div>
+
                         </>
 
                       )}
@@ -1534,70 +1657,72 @@ function App() {
                   }
                 )}
 
-              {/* AI TYPING */}
+              {/* AI TYPING INDICATOR */}
 
-              {loading && (
-                <div
-                  className="message-row bot-row"
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    flexDirection:
-                      "row",
-                    justifyContent:
-                      "flex-start",
-                    alignItems:
-                      "flex-start",
-                    gap: "12px",
-                    marginBottom:
-                      "28px",
-                    boxSizing:
-                      "border-box",
-                  }}
-                >
-
+              {typingConversationId !== null &&
+                typingConversationId ===
+                  activeConversationId && (
                   <div
-                    className="message-avatar bot-avatar"
+                    className="message-row bot-row"
                     style={{
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Bot size={18} />
-                  </div>
-
-                  <div
-                    className="message-content"
-                    style={{
-                      maxWidth: "75%",
-                      display:
-                        "flex",
+                      width: "100%",
+                      display: "flex",
                       flexDirection:
-                        "column",
+                        "row",
+                      justifyContent:
+                        "flex-start",
                       alignItems:
                         "flex-start",
-                      textAlign:
-                        "left",
+                      gap: "12px",
+                      marginBottom:
+                        "28px",
+                      boxSizing:
+                        "border-box",
                     }}
                   >
 
-                    <div className="message-name">
-                      AI Assistant
+                    <div
+                      className="message-avatar bot-avatar"
+                      style={{
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Bot size={18} />
                     </div>
 
-                    <div className="bot-message">
+                    <div
+                      className="message-content"
+                      style={{
+                        maxWidth: "75%",
+                        display:
+                          "flex",
+                        flexDirection:
+                          "column",
+                        alignItems:
+                          "flex-start",
+                        textAlign:
+                          "left",
+                      }}
+                    >
 
-                      <div className="typing-indicator">
-                        <span></span>
-                        <span></span>
-                        <span></span>
+                      <div className="message-name">
+                        AI Assistant
+                      </div>
+
+                      <div className="bot-message">
+
+                        <div className="typing-indicator">
+                          <span></span>
+                          <span></span>
+                          <span></span>
+                        </div>
+
                       </div>
 
                     </div>
 
                   </div>
-
-                </div>
-              )}
+                )}
 
               <div ref={messagesEndRef} />
 
@@ -1610,6 +1735,7 @@ function App() {
 
         <div className="input-area">
 
+          {/* CHAT INPUT - KEEP THIS CLASS */}
           <div className="input-wrapper">
 
             <textarea
